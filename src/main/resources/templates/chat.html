@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring AI Chat</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.ai {
+            text-align: left;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.ai .message-bubble {
+            background: #e2e8f0;
+            color: #334155;
+            border-bottom-left-radius: 5px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .message-sender {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .message.user .message-sender {
+            text-align: right;
+        }
+
+        .message.ai .message-sender {
+            text-align: left;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
+        }
+
+        .send-button:active {
+            transform: scale(0.95);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #64748b;
+            font-style: italic;
+            margin: 10px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        /* 스크롤바 스타일 */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .chat-container {
+                height: 95vh;
+                border-radius: 10px;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+                padding: 12px 16px;
+            }
+
+            .chat-input {
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+
+            .send-button {
+                width: 45px;
+                height: 45px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 Spring AI Chat</h1>
+            <div style="margin-top: 10px;">
+                <button onclick="togglePromptSettings()" style="
+                    background: rgba(255,255,255,0.2);
+                    color: white;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    padding: 5px 15px;
+                    border-radius: 15px;
+                    cursor: pointer;
+                    font-size: 14px;
+                ">⚙️ 프롬프트 설정</button>
+            </div>
+        </div>
+        
+        <!-- 시스템 프롬프트 설정 영역 -->
+        <div id="promptSettings" style="
+            display: none;
+            padding: 15px;
+            background: #f0f4f8;
+            border-bottom: 1px solid #e2e8f0;
+        ">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #334155;">
+                시스템 프롬프트 (AI의 기본 동작 방식 설정):
+            </label>
+            <textarea id="systemPrompt" style="
+                width: 100%;
+                min-height: 80px;
+                padding: 10px;
+                border: 2px solid #e2e8f0;
+                border-radius: 10px;
+                font-size: 14px;
+                resize: vertical;
+            " placeholder="예: 당신은 친절한 AI 비서입니다. 한국어로 대답하고, 정확하고 도움이 되는 답변을 제공하세요.">당신은 친절한 AI 비서입니다. 한국어로 대답하고, 정확하고 도움이 되는 답변을 제공하세요.</textarea>
+            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                <button onclick="savePromptSettings()" style="
+                    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+                    color: white;
+                    border: none;
+                    padding: 8px 20px;
+                    border-radius: 15px;
+                    cursor: pointer;
+                    font-size: 14px;
+                ">저장</button>
+                <button onclick="resetPromptSettings()" style="
+                    background: #64748b;
+                    color: white;
+                    border: none;
+                    padding: 8px 20px;
+                    border-radius: 15px;
+                    cursor: pointer;
+                    font-size: 14px;
+                ">기본값으로 재설정</button>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <!-- 채팅 메시지들이 여기에 표시됩니다 -->
+            <div class="message ai">
+                <div class="message-sender">AI</div>
+                <div class="message-bubble">
+                    안녕하세요! Spring AI와 함께하는 채팅에 오신 것을 환영합니다. 무엇을 도와드릴까요?
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loadingIndicator">
+            AI가 응답을 생성하고 있습니다...
+        </div>
+        
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm">
+                <input 
+                    type="text" 
+                    class="chat-input" 
+                    id="messageInput" 
+                    placeholder="메시지를 입력하세요..."
+                    autocomplete="off"
+                    required
+                >
+                <button type="submit" class="send-button" id="sendButton">
+                    ➤
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const chatForm = document.getElementById('chatForm');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        // 시스템 프롬프트 관련 변수
+        let currentSystemPrompt = '당신은 친절한 AI 비서입니다. 한국어로 대답하고, 정확하고 도움이 되는 답변을 제공하세요.';
+        
+        // 로컬 스토리지에서 저장된 프롬프트 불러오기
+        const savedPrompt = localStorage.getItem('systemPrompt');
+        if (savedPrompt) {
+            currentSystemPrompt = savedPrompt;
+            document.getElementById('systemPrompt').value = savedPrompt;
+        }
+
+        // 프롬프트 설정 토글
+        function togglePromptSettings() {
+            const settings = document.getElementById('promptSettings');
+            settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // 프롬프트 설정 저장
+        function savePromptSettings() {
+            const promptTextarea = document.getElementById('systemPrompt');
+            currentSystemPrompt = promptTextarea.value.trim() || '당신은 친절한 AI 비서입니다. 한국어로 대답하고, 정확하고 도움이 되는 답변을 제공하세요.';
+            localStorage.setItem('systemPrompt', currentSystemPrompt);
+            alert('프롬프트가 저장되었습니다!');
+            togglePromptSettings();
+            console.log('시스템 프롬프트 저장됨:', currentSystemPrompt);
+        }
+        
+        // 프롬프트 기본값으로 재설정
+        function resetPromptSettings() {
+            currentSystemPrompt = '당신은 친절한 AI 비서입니다. 한국어로 대답하고, 정확하고 도움이 되는 답변을 제공하세요.';
+            document.getElementById('systemPrompt').value = currentSystemPrompt;
+            localStorage.setItem('systemPrompt', currentSystemPrompt);
+            alert('프롬프트가 기본값으로 재설정되었습니다!');
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // 사용자 메시지 추가
+            addMessage('USER', message);
+            messageInput.value = '';
+            
+            // 전송 버튼 비활성화 및 로딩 표시
+            sendButton.disabled = true;
+            loadingIndicator.classList.add('show');
+            
+            // 콘솔에 전송할 데이터 로깅
+            console.log('=== 전송할 메시지 ===');
+            console.log('사용자 메시지:', message);
+            console.log('시스템 프롬프트:', currentSystemPrompt);
+            
+            try {
+                const requestBody = {
+                    sender: 'USER',
+                    message: message,
+                    systemPrompt: currentSystemPrompt  // 시스템 프롬프트 추가
+                };
+                
+                console.log('전송할 전체 요청 본문:', requestBody);
+                
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('네트워크 응답에 문제가 있습니다.');
+                }
+                
+                const data = await response.json();
+                addMessage('AI', data.message);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('AI', '죄송합니다. 서버 연결에 문제가 발생했습니다.');
+            } finally {
+                // 전송 버튼 활성화 및 로딩 숨김
+                sendButton.disabled = false;
+                loadingIndicator.classList.remove('show');
+                messageInput.focus();
+            }
+        });
+
+        function addMessage(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender.toLowerCase());
+            
+            messageDiv.innerHTML = `
+                <div class="message-sender">${sender}</div>
+                <div class="message-bubble">${escapeHtml(message)}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 엔터 키로 메시지 전송 (Shift+Enter로 줄바꿈)
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // 페이지 로드 시 입력창에 포커스
+        window.addEventListener('load', () => {
+            messageInput.focus();
+        });
+    </script>
+</body>
+</html>

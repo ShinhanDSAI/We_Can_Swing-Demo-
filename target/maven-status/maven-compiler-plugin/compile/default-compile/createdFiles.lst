@@ -1,0 +1,12 @@
+com\example\demo\DemoApplication.class
+com\example\demo\ChatController.class
+com\example\demo\model\ChatMessage.class
+com\example\demo\model\ChatRequest.class
+com\example\demo\model\ChatResponse.class
+com\example\demo\model\ChatMessage$Builder.class
+com\example\demo\config\OpenRouterConfig$OpenRouterProperties.class
+com\example\demo\service\ChatService.class
+com\example\demo\ChatController$ChatMessageDto.class
+com\example\demo\model\ChatResponse$Builder.class
+com\example\demo\config\OpenRouterConfig.class
+com\example\demo\OpenRouterChatModel.class
